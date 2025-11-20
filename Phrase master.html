@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sinhala Phrase Master</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            /* Updated to a more colorful, fun gradient */
+            background: linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%);
+            min-height: 100vh;
+        }
+        .sinhala-text {
+            font-family: 'Noto Sans Sinhala', sans-serif;
+        }
+        
+        /* Flip Card Styles */
+        .perspective-1000 { perspective: 1000px; }
+        .transform-style-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
+        
+        .card-inner {
+            transition: transform 0.6s;
+        }
+        .card-flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        /* Animations */
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.3s ease-out forwards;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .animate-shake {
+            animation: shake 0.3s ease-in-out;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.90);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.10);
+        }
+
+        .tile-selected {
+            border-color: #3b82f6 !important; /* blue-500 */
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+            transform: scale(1.05);
+            z-index: 10;
+        }
+        
+        .tile-matched {
+            background-color: #bbf7d0 !important; /* green-200 */
+            border-color: #22c55e !important; /* green-500 */
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.9);
+        }
+
+        .tile-wrong {
+            background-color: #fecaca !important; /* red-200 */
+            border-color: #ef4444 !important; /* red-500 */
+        }
+
+        /* Custom Game Colors */
+        .tile-en { background-color: #f0f9ff; border-color: #bae6fd; } /* Light Blue */
+        .tile-si { background-color: #fff7ed; border-color: #fed7aa; } /* Light Orange */
+    </style>
+</head>
+<body class="flex flex-col items-center p-4 sm:p-6 text-slate-800">
+
+    <!-- Header -->
+    <header class="w-full max-w-3xl text-center mb-6">
+        <h1 class="text-3xl sm:text-4xl font-bold text-white drop-shadow-md mb-2">🇱🇰 Sinhala Phrase Master</h1>
+        <p class="text-white/90 font-medium">Practice common questions for daily life</p>
+    </header>
+
+    <!-- Main App Container -->
+    <main id="app-container" class="w-full max-w-3xl glass-panel rounded-3xl p-4 sm:p-8 min-h-[500px] relative overflow-hidden shadow-2xl">
+        
+        <!-- Navigation Tabs -->
+        <div class="flex justify-center gap-2 mb-8" id="nav-tabs">
+            <button onclick="switchMode('flashcards')" id="btn-flashcards" class="px-4 py-2 rounded-full bg-indigo-600 text-white font-semibold text-sm sm:text-base transition-all shadow-md hover:shadow-lg hover:scale-105">
+                <i class="fas fa-clone mr-2"></i>Learn
+            </button>
+            <button onclick="switchMode('quiz')" id="btn-quiz" class="px-4 py-2 rounded-full bg-white text-slate-600 border border-slate-200 font-semibold text-sm sm:text-base transition-all hover:bg-indigo-50">
+                <i class="fas fa-question-circle mr-2"></i>Quiz
+            </button>
+            <button onclick="switchMode('match')" id="btn-match" class="px-4 py-2 rounded-full bg-white text-slate-600 border border-slate-200 font-semibold text-sm sm:text-base transition-all hover:bg-indigo-50">
+                <i class="fas fa-puzzle-piece mr-2"></i>Match
+            </button>
+        </div>
+
+        <!-- MODE: FLASHCARDS -->
+        <div id="mode-flashcards" class="mode-section flex flex-col items-center">
+            <div class="w-full flex justify-between text-sm text-slate-500 mb-4 font-medium">
+                <span>Card <span id="fc-current">1</span> of <span id="fc-total">0</span></span>
+                <button onclick="shuffleCards()" class="text-indigo-600 hover:text-indigo-800 transition-colors"><i class="fas fa-random mr-1"></i> Shuffle</button>
+            </div>
+            
+            <!-- Card Container -->
+            <div class="w-full h-64 sm:h-80 perspective-1000 cursor-pointer group" onclick="flipCard()">
+                <div id="flashcard-inner" class="card-inner relative w-full h-full transform-style-3d duration-500 shadow-xl rounded-2xl">
+                    
+                    <!-- Front -->
+                    <div class="absolute w-full h-full backface-hidden bg-white rounded-2xl border-b-4 border-indigo-100 flex flex-col items-center justify-center p-6 text-center">
+                        <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-4 bg-indigo-50 px-3 py-1 rounded-full">English</span>
+                        <h2 id="fc-front-text" class="text-2xl sm:text-3xl font-bold text-slate-800">Loading...</h2>
+                        <p class="mt-8 text-xs text-slate-400 font-medium animate-pulse">Tap to flip <i class="fas fa-sync ml-1"></i></p>
+                    </div>
+
+                    <!-- Back -->
+                    <div class="absolute w-full h-full backface-hidden bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl rotate-y-180 flex flex-col items-center justify-center p-6 text-center text-white shadow-inner">
+                        <span class="text-xs font-bold text-indigo-200 uppercase tracking-wider mb-4 bg-white/20 px-3 py-1 rounded-full">Sinhala</span>
+                        <h2 id="fc-back-sinhala" class="text-2xl sm:text-4xl font-bold mb-2 sinhala-text leading-relaxed">...</h2>
+                        <!-- Removed Phonetic Text -->
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex justify-between w-full max-w-xs mt-8 gap-4">
+                <button onclick="prevCard()" class="flex-1 p-4 rounded-2xl bg-white border border-slate-100 shadow-md text-slate-600 hover:bg-slate-50 hover:text-indigo-600 transition-all hover:-translate-x-1">
+                    <i class="fas fa-arrow-left text-xl"></i>
+                </button>
+                <button onclick="nextCard()" class="flex-1 p-4 rounded-2xl bg-indigo-600 shadow-lg shadow-indigo-200 text-white hover:bg-indigo-700 transition-all hover:translate-x-1 hover:shadow-xl">
+                    <i class="fas fa-arrow-right text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- MODE: QUIZ -->
+        <div id="mode-quiz" class="mode-section hidden flex-col w-full">
+            <div class="flex justify-between items-center mb-6 bg-white/50 p-3 rounded-xl">
+                <div class="text-sm font-bold text-slate-600">Score: <span id="quiz-score" class="text-indigo-600 text-lg ml-1">0</span></div>
+                <div class="h-3 w-32 bg-slate-200 rounded-full overflow-hidden">
+                    <div id="quiz-progress" class="h-full bg-gradient-to-r from-indigo-500 to-purple-500 w-0 transition-all duration-500"></div>
+                </div>
+            </div>
+
+            <div id="quiz-container" class="animate-fade-in">
+                <div class="bg-white p-8 rounded-2xl mb-6 text-center border-b-4 border-slate-100 shadow-sm">
+                    <p class="text-xs text-indigo-500 font-bold uppercase mb-3 tracking-wide">Translate to Sinhala</p>
+                    <h3 id="quiz-question" class="text-2xl font-bold text-slate-800">Question Here</h3>
+                </div>
+
+                <div id="quiz-options" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Options generated by JS -->
+                </div>
+                
+                <div id="quiz-feedback" class="hidden mt-4 p-4 rounded-xl text-center font-bold shadow-sm"></div>
+                
+                <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="hidden w-full mt-6 py-4 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all hover:scale-[1.02]">
+                    Next Question <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+            
+            <div id="quiz-end-screen" class="hidden text-center py-10">
+                <div class="text-7xl mb-6 animate-bounce">🏆</div>
+                <h2 class="text-3xl font-bold text-slate-800 mb-2">Quiz Complete!</h2>
+                <p class="text-slate-600 mb-8">You scored <span id="final-score" class="font-bold text-indigo-600 text-xl">0</span> out of <span id="total-quiz-q">0</span></p>
+                <button onclick="startQuiz()" class="px-8 py-4 bg-indigo-600 text-white rounded-full font-bold shadow-lg hover:scale-105 transition-transform hover:shadow-indigo-300">
+                    Play Again
+                </button>
+            </div>
+        </div>
+
+        <!-- MODE: MATCHING -->
+        <div id="mode-match" class="mode-section hidden flex-col items-center w-full">
+            <div class="flex justify-between w-full mb-4 items-center">
+                <p class="text-slate-700 font-semibold text-sm">Match English to Sinhala</p>
+                <button onclick="startMatchingGame()" class="text-xs bg-indigo-100 text-indigo-700 font-bold px-3 py-1 rounded-full hover:bg-indigo-200 transition"><i class="fas fa-redo mr-1"></i> Reset</button>
+            </div>
+            
+            <div id="match-grid" class="grid grid-cols-2 gap-3 w-full">
+                <!-- Tiles generated by JS -->
+            </div>
+
+            <div id="match-success" class="hidden absolute inset-0 bg-white/95 z-20 flex-col items-center justify-center text-center backdrop-blur-sm">
+                <div class="text-6xl mb-4 text-green-500 animate-bounce">✨</div>
+                <h2 class="text-3xl font-bold text-slate-800 mb-2">Awesome!</h2>
+                <p class="text-slate-600 mb-6">You cleared the board.</p>
+                <button onclick="startMatchingGame()" class="px-8 py-4 bg-green-500 text-white rounded-full font-bold shadow-lg hover:bg-green-600 transition-colors hover:scale-105">
+                    Play Again
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="mt-8 text-center text-white/80 text-sm font-medium">
+        <p>&copy; Copyright Tharindu K. Jayasinghe and emsc.lk</p>
+    </footer>
+
+    <script>
+        // --- DATA (Phonetics Removed) ---
+        const database = [
+            { en: "How many brothers do you have?", si: "ඔයාට මල්ලිලා/සහෝදරයෝ කී දෙනෙක් ඉන්නවද?" },
+            { en: "How do you do this?", si: "මේක කොහොමද කරන්නේ?" },
+            { en: "What is this?", si: "මේක මොකක්ද?" },
+            { en: "What is your name?", si: "ඔයාගේ නම මොකක්ද?" },
+            { en: "What do you want?", si: "ඔයාට මොනවද ඕනේ?" },
+            { en: "What happened?", si: "මොකද වුණේ?" },
+            { en: "What time is it?", si: "වෙලාව කීයද?" },
+            { en: "Where are you?", si: "ඔයා කොහෙද?" },
+            { en: "Where do you live?", si: "ඔයා කොහෙද ඉන්නේ?" },
+            { en: "Where is the bus stop?", si: "බස් හෝල්ට් එක කොහෙද?" },
+            { en: "Where is the toilet?", si: "ටොයිලට් එක කොහෙද?" },
+            { en: "Where are you going?", si: "ඔයා කොහෙටද යන්නේ?" },
+            { en: "When is your break?", si: "ඔයාගේ බ්‍රේක් එක කවදාද?" },
+            { en: "When is the meeting?", si: "මීටින් එක කවදාද?" },
+            { en: "When do you start work?", si: "ඔයා වැඩ පටන් ගන්නේ කවදාද?" },
+            { en: "When will you come?", si: "ඔයා එන්නේ කවදාද?" },
+            { en: "When is your birthday?", si: "ඔයාගේ උපන් දිනය කවදාද?" },
+            { en: "Why are you late?", si: "ඇයි ඔයා ලේට්?" },
+            { en: "Why are you sad?", si: "ඇයි ඔයා දුකෙන්?" },
+            { en: "Why do you say that?", si: "ඇයි ඔයා ඒක කියන්නේ?" },
+            { en: "Why are you calling me?", si: "ඇයි මට කතා කරන්නේ?" },
+            { en: "Why is it expensive?", si: "ඇයි මේක ගණන්?" },
+            { en: "Who is this?", si: "මේ කවුද?" },
+            { en: "Who is calling?", si: "කවුද කෝල් කරන්නේ?" },
+            { en: "Who is your friend?", si: "ඔයාගේ යාළුවා කවුද?" },
+            { en: "Who is coming with you?", si: "ඔයා සමග එන්නේ කවුද?" },
+            { en: "Who broke this?", si: "මේක කවුද කැඩුවේ?" },
+            { en: "Which one do you want?", si: "ඔයාට කොයි එකද ඕනේ?" },
+            { en: "Which bus should I take?", si: "මම නැග්ගේ කොයි බස් එකටද?" },
+            { en: "Which colour do you like?", si: "ඔයා කැමති කලර් එක මොකක්ද?" },
+            { en: "Which way is faster?", si: "වැඩිය වේගවත් කොයි පාරද?" },
+            { en: "How are you?", si: "ඔයාට කොහොමද?" },
+            { en: "How much is this?", si: "මේක කොච්චරද?" },
+            { en: "How was your day?", si: "ඔයාගේ දවස කොහොමද තිබ්බේ?" }
+        ];
+
+        // --- GLOBAL STATE ---
+        let currentMode = 'flashcards';
+        
+        // Flashcard State
+        let fcIndex = 0;
+        let fcData = [...database];
+
+        // Quiz State
+        let quizScore = 0;
+        let quizIndex = 0;
+        let quizQuestions = [];
+        const QUIZ_LENGTH = 10;
+
+        // Match State
+        let matchSelected = null;
+        let matchPairsFound = 0;
+        const MATCH_PAIRS_COUNT = 6;
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            updateFCCounter();
+            renderFlashcard();
+        };
+
+        // --- NAVIGATION ---
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            // Update UI Tabs
+            document.querySelectorAll('#nav-tabs button').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-md', 'scale-105');
+                btn.classList.add('bg-white', 'text-slate-600', 'border', 'border-slate-200');
+            });
+            
+            const activeBtn = document.getElementById(`btn-${mode}`);
+            activeBtn.classList.remove('bg-white', 'text-slate-600', 'border', 'border-slate-200');
+            activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-md', 'scale-105');
+
+            // Hide all sections
+            document.querySelectorAll('.mode-section').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.mode-section').forEach(el => el.classList.remove('flex'));
+
+            // Show selected section
+            const section = document.getElementById(`mode-${mode}`);
+            section.classList.remove('hidden');
+            section.classList.add('flex');
+
+            // Init specific mode
+            if (mode === 'quiz') startQuiz();
+            if (mode === 'match') startMatchingGame();
+        }
+
+        // --- FLASHCARD LOGIC ---
+        function updateFCCounter() {
+            document.getElementById('fc-current').innerText = fcIndex + 1;
+            document.getElementById('fc-total').innerText = fcData.length;
+        }
+
+        function renderFlashcard() {
+            const card = fcData[fcIndex];
+            const inner = document.getElementById('flashcard-inner');
+            
+            // Reset flip
+            document.getElementById('flashcard-inner').parentElement.classList.remove('card-flipped');
+            
+            // Small delay to allow flip reset before changing text if flipping back
+            setTimeout(() => {
+                document.getElementById('fc-front-text').innerText = card.en;
+                document.getElementById('fc-back-sinhala').innerText = card.si;
+            }, 150);
+            
+            updateFCCounter();
+        }
+
+        function flipCard() {
+            const container = document.getElementById('flashcard-inner').parentElement;
+            container.classList.toggle('card-flipped');
+        }
+
+        function nextCard() {
+            fcIndex = (fcIndex + 1) % fcData.length;
+            renderFlashcard();
+        }
+
+        function prevCard() {
+            fcIndex = (fcIndex - 1 + fcData.length) % fcData.length;
+            renderFlashcard();
+        }
+
+        function shuffleCards() {
+            fcData.sort(() => Math.random() - 0.5);
+            fcIndex = 0;
+            renderFlashcard();
+        }
+
+        // --- QUIZ LOGIC ---
+        function startQuiz() {
+            quizScore = 0;
+            quizIndex = 0;
+            const shuffled = [...database].sort(() => 0.5 - Math.random());
+            quizQuestions = shuffled.slice(0, QUIZ_LENGTH);
+            
+            document.getElementById('quiz-end-screen').classList.add('hidden');
+            document.getElementById('quiz-container').classList.remove('hidden');
+            document.getElementById('total-quiz-q').innerText = QUIZ_LENGTH;
+            
+            updateQuizUI();
+            renderQuizQuestion();
+        }
+
+        function updateQuizUI() {
+            document.getElementById('quiz-score').innerText = quizScore;
+            const percent = (quizIndex / QUIZ_LENGTH) * 100;
+            document.getElementById('quiz-progress').style.width = `${percent}%`;
+        }
+
+        function renderQuizQuestion() {
+            const q = quizQuestions[quizIndex];
+            document.getElementById('quiz-question').innerText = q.en;
+            
+            const optionsContainer = document.getElementById('quiz-options');
+            optionsContainer.innerHTML = '';
+            
+            document.getElementById('quiz-feedback').classList.add('hidden');
+            document.getElementById('quiz-next-btn').classList.add('hidden');
+            document.getElementById('quiz-feedback').className = "hidden mt-4 p-4 rounded-xl text-center font-bold shadow-sm";
+
+            let options = [q];
+            const distractors = database.filter(i => i.en !== q.en).sort(() => 0.5 - Math.random()).slice(0, 3);
+            options = [...options, ...distractors].sort(() => 0.5 - Math.random());
+
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "w-full p-4 bg-white border-2 border-slate-100 rounded-xl shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-all text-left animate-fade-in group";
+                btn.onclick = () => checkQuizAnswer(opt, q, btn);
+                
+                const sinhala = document.createElement('div');
+                sinhala.className = "font-bold text-slate-800 sinhala-text text-lg group-hover:text-indigo-700";
+                sinhala.innerText = opt.si;
+                
+                btn.appendChild(sinhala);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function checkQuizAnswer(selected, correct, btnElement) {
+            const allBtns = document.getElementById('quiz-options').children;
+            for(let btn of allBtns) { 
+                btn.disabled = true; 
+                btn.classList.add('opacity-60', 'cursor-not-allowed'); 
+            }
+            
+            btnElement.classList.remove('opacity-60');
+            
+            const feedback = document.getElementById('quiz-feedback');
+            feedback.classList.remove('hidden');
+            
+            if (selected.en === correct.en) {
+                // Correct
+                btnElement.classList.add('bg-green-50', 'border-green-500');
+                btnElement.classList.remove('border-slate-100');
+                feedback.innerText = "Correct! 🎉";
+                feedback.classList.add('bg-green-100', 'text-green-800');
+                quizScore++;
+            } else {
+                // Wrong
+                btnElement.classList.add('bg-red-50', 'border-red-500');
+                btnElement.classList.remove('border-slate-100');
+                feedback.innerHTML = `Incorrect. <br><span class="text-sm font-normal">Correct: <span class="font-bold sinhala-text">${correct.si}</span></span>`;
+                feedback.classList.add('bg-red-100', 'text-red-800');
+            }
+
+            document.getElementById('quiz-score').innerText = quizScore;
+            document.getElementById('quiz-next-btn').classList.remove('hidden');
+        }
+
+        function nextQuizQuestion() {
+            quizIndex++;
+            if (quizIndex < QUIZ_LENGTH) {
+                updateQuizUI();
+                renderQuizQuestion();
+            } else {
+                updateQuizUI();
+                document.getElementById('quiz-container').classList.add('hidden');
+                document.getElementById('quiz-end-screen').classList.remove('hidden');
+                document.getElementById('final-score').innerText = quizScore;
+            }
+        }
+
+        // --- MATCHING GAME LOGIC ---
+        function startMatchingGame() {
+            matchSelected = null;
+            matchPairsFound = 0;
+            document.getElementById('match-success').classList.add('hidden');
+            
+            const grid = document.getElementById('match-grid');
+            grid.innerHTML = '';
+
+            const gameData = [...database].sort(() => 0.5 - Math.random()).slice(0, MATCH_PAIRS_COUNT);
+            
+            let tiles = [];
+            gameData.forEach(item => {
+                tiles.push({ id: item.en, text: item.en, type: 'en', pairId: item.en });
+                tiles.push({ id: item.en + '_si', text: item.si, type: 'si', pairId: item.en });
+            });
+
+            tiles.sort(() => 0.5 - Math.random());
+
+            tiles.forEach(tile => {
+                const el = document.createElement('div');
+                // Added color classes tile-en and tile-si
+                const colorClass = tile.type === 'en' ? 'tile-en' : 'tile-si';
+                
+                el.className = `relative p-3 sm:p-4 rounded-xl border-2 shadow-sm flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-md transition-all h-24 sm:h-32 active:scale-95 select-none ${colorClass}`;
+                
+                if (tile.type === 'si') el.classList.add('sinhala-text');
+                
+                el.onclick = () => handleTileClick(el, tile);
+                el.dataset.pairId = tile.pairId;
+
+                const mainText = document.createElement('span');
+                mainText.className = tile.type === 'en' ? "text-xs sm:text-sm font-bold text-slate-700" : "text-base sm:text-xl font-bold text-slate-800";
+                mainText.innerText = tile.text;
+                el.appendChild(mainText);
+
+                grid.appendChild(el);
+            });
+        }
+
+        function handleTileClick(element, tileData) {
+            if (element.classList.contains('tile-matched') || element === matchSelected?.element) return;
+
+            element.classList.add('tile-selected');
+
+            if (!matchSelected) {
+                matchSelected = { element, data: tileData };
+            } else {
+                const first = matchSelected;
+                const second = { element, data: tileData };
+
+                if (first.data.pairId === second.data.pairId) {
+                    // Match
+                    first.element.classList.remove('tile-selected');
+                    second.element.classList.remove('tile-selected');
+                    
+                    first.element.classList.add('tile-matched', 'transition-transform', 'duration-500');
+                    second.element.classList.add('tile-matched', 'transition-transform', 'duration-500');
+                    
+                    matchPairsFound++;
+                    matchSelected = null;
+
+                    if (matchPairsFound === MATCH_PAIRS_COUNT) {
+                        setTimeout(() => {
+                            document.getElementById('match-success').classList.remove('hidden');
+                            document.getElementById('match-success').classList.add('flex');
+                        }, 500);
+                    }
+                } else {
+                    // No Match
+                    setTimeout(() => {
+                        first.element.classList.add('tile-wrong', 'animate-shake');
+                        second.element.classList.add('tile-wrong', 'animate-shake');
+                    }, 100);
+
+                    setTimeout(() => {
+                        first.element.classList.remove('tile-selected', 'tile-wrong', 'animate-shake');
+                        second.element.classList.remove('tile-selected', 'tile-wrong', 'animate-shake');
+                        matchSelected = null;
+                    }, 800);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
